@@ -84,9 +84,16 @@ const start = async (params) => {
         const { status, headers: errRespHeaders, data } = error.response;
         socket.emit('response', { requestId, data, status, headers: errRespHeaders });
       } else {
+        let message = 'something went wrong during localhost request forwarding';
+        if (error.code === 'ECONNREFUSED') {
+          message = 'No target application is running on exposy-cli host machine!';
+          console.error(
+            `No application is running at ${localhost}!\n Please ensure the target app is running on specified port or run "exposy start" with desired port option!`
+          );
+        }
         socket.emit('response', {
           requestId,
-          data: { message: 'something went wrong during localhost request forwarding' },
+          data: { message },
           status: 500,
           headers,
         });
