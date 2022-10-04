@@ -61,7 +61,20 @@ const start = async (params) => {
   });
 
   socket.on('request', async (payload) => {
-    const { method, headers, query, path, requestId, body } = payload;
+    const { method, headers, query, path, requestId, body, rawBody } = payload;
+
+    const contentType = headers['content-type'];
+
+    let dataToForward = body;
+
+    if (contentType !== 'application/json') {
+      // use rawBody provided by exposy-server to avoid any formatting issues
+      dataToForward = rawBody;
+    }
+
+    // content-length header is not needed as it is inferred from content
+    // need to delete it, otherwise target API will report it as bad request
+    delete headers['content-length'];
 
     try {
       const {
@@ -71,11 +84,9 @@ const start = async (params) => {
       } = await axios({
         method,
         url: `${localhost}${path}`,
-        data: body,
-        params: {
-          headers,
-          query,
-        },
+        data: dataToForward,
+        headers,
+        params: query,
       });
 
       socket.emit('response', { requestId, data, status, headers: respHeaders });
