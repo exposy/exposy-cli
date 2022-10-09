@@ -33,11 +33,19 @@ const { argv } = yargs(hideBin(process.argv))
       nargs: 1,
       demandOption: false,
     };
+    const authToken = {
+      alias: 't',
+      type: 'string',
+      description: 'Override globally configured exposy authentication token',
+      nargs: 1,
+      demandOption: false,
+    };
 
     return args
       .option('port', portOption)
       .option('exposyServer', serverUrlOption)
-      .option('exposyServerSSL', serverSslOption);
+      .option('exposyServerSSL', serverSslOption)
+      .option('authToken', authToken);
   })
   .example('$0 start -p 3000', 'Expose localhost:3000 via exposy server')
 

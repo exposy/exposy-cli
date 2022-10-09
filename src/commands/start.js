@@ -2,11 +2,16 @@ import axios from 'axios';
 import { io } from 'socket.io-client';
 import { getMachineId, getConfig } from '../util/utils.js';
 
+// it should come from env (use <server>/authenticate route to get it)
+// const AUTH_TOKEN = '';
+
 const start = async (params) => {
-  const { port, exposyServer, exposyServerSSL } = params;
+  const { port, exposyServer, exposyServerSSL, authToken } = params;
 
   let SERVER_HOST;
   let SERVER_SSL_VERIFY;
+  let AUTH_TOKEN;
+  const storedConfig = getConfig();
 
   if (exposyServer !== undefined) {
     console.info('Using provided exposy server url');
@@ -15,8 +20,8 @@ const start = async (params) => {
   } else {
     //  use global config
     console.info('Using exposy server from global configuration');
-    const config = getConfig();
-    SERVER_HOST = config.SERVER_HOST.split('://').pop(); // remove protocall if provided
+    // const config = getConfig();
+    SERVER_HOST = storedConfig.SERVER_HOST.split('://').pop(); // remove protocall if provided
   }
 
   if (exposyServerSSL !== undefined) {
@@ -26,8 +31,19 @@ const start = async (params) => {
   } else {
     //  use global config
     console.info('Using global exposy ssl configuration');
-    const config = getConfig();
-    SERVER_SSL_VERIFY = config.SERVER_SSL_VERIFY;
+    // const config = getConfig();
+    SERVER_SSL_VERIFY = storedConfig.SERVER_SSL_VERIFY;
+  }
+
+  if (authToken !== undefined) {
+    console.info('Using provided authentication token in configuration');
+    // use overriden config
+    AUTH_TOKEN = authToken;
+  } else {
+    //  use global config
+    console.info('Using authentication token from global configuration');
+    // const config = getConfig();
+    AUTH_TOKEN = storedConfig.AUTH_TOKEN;
   }
 
   const machineId = await getMachineId();
@@ -45,6 +61,7 @@ const start = async (params) => {
     reconnectionDelayMax: 10000,
     query: {
       hostId,
+      token: AUTH_TOKEN,
     },
   });
 
@@ -89,15 +106,27 @@ const start = async (params) => {
         params: query,
       });
 
-      socket.emit('response', { requestId, data, status, headers: respHeaders });
+      socket.emit('response', {
+        requestId,
+        data,
+        status,
+        headers: respHeaders,
+      });
     } catch (error) {
       if (error.response) {
         const { status, headers: errRespHeaders, data } = error.response;
-        socket.emit('response', { requestId, data, status, headers: errRespHeaders });
+        socket.emit('response', {
+          requestId,
+          data,
+          status,
+          headers: errRespHeaders,
+        });
       } else {
-        let message = 'something went wrong during localhost request forwarding';
+        let message =
+          'something went wrong during localhost request forwarding';
         if (error.code === 'ECONNREFUSED') {
-          message = 'No target application is running on exposy-cli host machine!';
+          message =
+            'No target application is running on exposy-cli host machine!';
           console.error(
             `No application is running at ${localhost}!\n Please ensure the target app is running on specified port or run "exposy start" with desired port option!`
           );
@@ -110,6 +139,11 @@ const start = async (params) => {
         });
       }
     }
+  });
+
+  socket.on('connect_error', (event) => {
+    //TODO: graceful shutdown
+    console.error(event);
   });
 
   // TODO handle disconnect events
