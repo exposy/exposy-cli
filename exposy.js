@@ -4,6 +4,7 @@ import { hideBin } from 'yargs/helpers';
 
 import config from './src/commands/config.js';
 import start from './src/commands/start.js';
+import help from './src/commands/help.js';
 
 const { argv } = yargs(hideBin(process.argv))
   .usage('Usage: $0 <command> [options]')
@@ -44,16 +45,23 @@ const { argv } = yargs(hideBin(process.argv))
   .command('config', 'Configure exposy options globally')
   .example('$0 config', 'This will launch a questionnaire.')
 
-  .help('h')
-  .alias('h', 'help');
+  .help(false);
 
 (() => {
   const { _, ...params } = argv;
   const command = _.join(' ');
 
-  if (command === 'start') {
-    start(params);
-  } else if (command === 'config') {
-    config();
+  switch (command) {
+    case 'start': {
+      start(params);
+      break;
+    }
+    case 'config': {
+      config();
+      break;
+    }
+    default: {
+      help();
+    }
   }
 })();
